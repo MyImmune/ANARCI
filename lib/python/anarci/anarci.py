@@ -305,7 +305,9 @@ def _domains_are_same(dom1, dom2):
 
     @return: True or False  
     """
-    dom1, dom2 = sorted( [dom1, dom2], key=lambda x: x.query_start  )
+    if None in (dom1.query_start, dom1.query_end, dom2.query_start, dom2.query_end):
+        return False
+    dom1, dom2 = sorted( [dom1, dom2], key=lambda x: x.query_start )
     if dom2.query_start >= dom1.query_end:
         return False
     return True
@@ -348,7 +350,7 @@ def _parse_hmmer_query(query, bit_score_threshold=80, hmmer_species=None):
         else:
             hsp_list = query.hsps
 
-        for hsp in sorted(hsp_list, key=lambda x: x.evalue): # Iterate over the matches of the domains in order of their e-value (most significant first)
+        for hsp in sorted(hsp_list, key=lambda x: x.evalue or 0.0): # Iterate over the matches of the domains in order of their e-value (most significant first)
             new=True
             if hsp.bitscore >= bit_score_threshold: # Only look at those with hits that are over the threshold bit-score.
                 for i in range( len(domains) ): # Check to see if we already have seen the domain
@@ -361,7 +363,7 @@ def _parse_hmmer_query(query, bit_score_threshold=80, hmmer_species=None):
                     top_descriptions.append(  dict( list(zip(hit_table[0], hit_table[-1])) ) ) # Add the last added to the descriptions list. 
 
         # Reorder the domains according to the order they appear in the sequence.         
-        ordering = sorted( list(range(len(domains))), key=lambda x: domains[x].query_start)
+        ordering = sorted( list(range(len(domains))), key=lambda x: domains[x].query_start or 0)
         domains = [ domains[_] for _ in ordering ]
         top_descriptions = [ top_descriptions[_] for _ in ordering ]         
    
@@ -390,11 +392,17 @@ def _hmm_alignment_to_states(hsp, n, seq_length):
 
     # Extract the start an end points of the hmm states and the sequence
     # These are python indices i.e list[ start:end ] and therefore start will be one less than in the text file
+    # Newer Biopython may return None for HSP-level coordinates; fall back to the first fragment.
     _hmm_start = hsp.hit_start
     _hmm_end = hsp.hit_end
-     
     _seq_start = hsp.query_start
     _seq_end = hsp.query_end
+    if None in (_hmm_start, _hmm_end, _seq_start, _seq_end) and hsp.fragments:
+        frag = hsp.fragments[0]
+        if _hmm_start is None: _hmm_start = frag.hit_start
+        if _hmm_end   is None: _hmm_end   = frag.hit_end
+        if _seq_start is None: _seq_start = frag.query_start
+        if _seq_end   is None: _seq_end   = frag.query_end
 
     # Extact the full length of the HMM hit
     species, ctype = hsp.hit_id.split('_')

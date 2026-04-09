@@ -8,7 +8,7 @@
 #    You should have received a copy of the BSD 3-Clause Licence
 #    along with this program.  If not, see <https://opensource.org/license/bsd-3-clause/>.
 
-description='''
+description=r'''
 
 ANARCI                                                 \\\    //
 Antibody Numbering and Antigen Receptor ClassIfication  \\\  //
