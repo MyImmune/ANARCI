@@ -374,7 +374,8 @@ def _parse_hmmer_query(query, bit_score_threshold=80, hmmer_species=None):
         state_vectors.append( _hmm_alignment_to_states(domains[i], ndomains, query.seq_len) ) # Alignment to the reference states.
         top_descriptions[i][ "species"] = species # Reparse
         top_descriptions[i][ "chain_type"] = chain
-        top_descriptions[i][ "query_start"] = state_vectors[-1][0][-1] # Make sure the query_start agree if it was changed
+        if state_vectors[-1]:
+            top_descriptions[i][ "query_start"] = state_vectors[-1][0][-1] # Make sure the query_start agree if it was changed
 
     return hit_table, state_vectors, top_descriptions
 
@@ -397,12 +398,17 @@ def _hmm_alignment_to_states(hsp, n, seq_length):
     _hmm_end = hsp.hit_end
     _seq_start = hsp.query_start
     _seq_end = hsp.query_end
-    if None in (_hmm_start, _hmm_end, _seq_start, _seq_end) and hsp.fragments:
-        frag = hsp.fragments[0]
-        if _hmm_start is None: _hmm_start = frag.hit_start
-        if _hmm_end   is None: _hmm_end   = frag.hit_end
-        if _seq_start is None: _seq_start = frag.query_start
-        if _seq_end   is None: _seq_end   = frag.query_end
+    if None in (_hmm_start, _hmm_end, _seq_start, _seq_end):
+        for frag in hsp.fragments:
+            if _hmm_start is None: _hmm_start = frag.hit_start
+            if _hmm_end   is None: _hmm_end   = frag.hit_end
+            if _seq_start is None: _seq_start = frag.query_start
+            if _seq_end   is None: _seq_end   = frag.query_end
+            if None not in (_hmm_start, _hmm_end, _seq_start, _seq_end):
+                break
+
+    if None in (_hmm_start, _hmm_end, _seq_start, _seq_end):
+        return []  # Cannot determine alignment coordinates; skip domain
 
     # Extact the full length of the HMM hit
     species, ctype = hsp.hit_id.split('_')
